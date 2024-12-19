@@ -138,16 +138,18 @@ func kubectlPath(maj, min string) string {
 }
 
 func download(maj, min string) {
+	tmpKubectl := "/tmp/kubectl"
 	kubectl := kubectlPath(maj, min)
-	cmd := exec.Command("sudo", "curl", "-sLf", "-o", kubectl,
+	cmd := exec.Command("curl", "-sLf", "-o", tmpKubectl,
 		"https://dl.k8s.io/release/v"+maj+"."+min+".0/bin/linux/amd64/kubectl")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Fatalf("%s: %s: %s", cmd.String(), string(out), err)
 	}
-	chmodCmd := exec.Command("sudo", "chmod", "0755", kubectl)
-	out, err = chmodCmd.CombinedOutput()
-	if err != nil {
-		log.Fatalf("%s: %s: %s", cmd.String(), string(out), err)
+	if err := os.Rename(tmpKubectl, kubectl); err != nil {
+		log.Fatalf("rename %s to %s failed, %s", tmpKubectl, kubectl, err)
+	}
+	if err := os.Chmod(kubectl, 0755); err != nil {
+		log.Fatalf("chmod %s to 0755 failed, %s", kubectl, err)
 	}
 }
