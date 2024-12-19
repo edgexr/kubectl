@@ -29,7 +29,6 @@ import (
 // correct version of kubectl is used for the target cluster.
 
 var (
-	BinDir           = "/usr/bin"
 	DefaultMajorVers = "1"
 	DefaultMinorVers = "18"
 )
@@ -46,9 +45,6 @@ type Version struct {
 }
 
 func main() {
-	if str := os.Getenv("BINDIR"); str != "" {
-		BinDir = str
-	}
 	if str := os.Getenv("DEFAULT_MAJOR_VERS"); str != "" {
 		DefaultMajorVers = str
 	}
@@ -133,21 +129,26 @@ func main() {
 	}
 }
 
+func getBinDir() string {
+	return os.Getenv("HOME") + "/bin"
+}
+
 func kubectlPath(maj, min string) string {
-	return fmt.Sprintf("%s/kubectl-v%s.%s.0", BinDir, maj, min)
+	return fmt.Sprintf("%s/kubectl-v%s.%s.0", getBinDir(), maj, min)
 }
 
 func download(maj, min string) {
+	if err := os.MkdirAll(getBinDir(), 0755); err != nil {
+		log.Fatalf("mkdirp %s failed, %s", getBinDir(), err)
+	}
 	kubectl := kubectlPath(maj, min)
-	cmd := exec.Command("sudo", "curl", "-sLf", "-o", kubectl,
+	cmd := exec.Command("curl", "-sLf", "-o", kubectl,
 		"https://dl.k8s.io/release/v"+maj+"."+min+".0/bin/linux/amd64/kubectl")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Fatalf("%s: %s: %s", cmd.String(), string(out), err)
 	}
-	chmodCmd := exec.Command("sudo", "chmod", "0755", kubectl)
-	out, err = chmodCmd.CombinedOutput()
-	if err != nil {
-		log.Fatalf("%s: %s: %s", cmd.String(), string(out), err)
+	if err := os.Chmod(kubectl, 0755); err != nil {
+		log.Fatalf("chmod %s to 0755 failed, %s", kubectl, err)
 	}
 }
